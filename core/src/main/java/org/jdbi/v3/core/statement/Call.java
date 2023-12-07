@@ -56,7 +56,18 @@ public class Call extends SqlStatement<Call> {
      * @return self
      */
     public Call registerOutParameter(int position, int sqlType) {
-        return registerOutParameter(position, sqlType, null);
+        return registerOutParameter(position, sqlType, null, null);
+    }
+
+    /**
+     * Register a positional output parameter.
+     * @param position the parameter position (zero-based)
+     * @param sqlType an SQL type constant as defined by {@link java.sql.Types} or by the JDBC vendor.
+     * @param typeName the fully-qualified name of an SQL structured type.
+     * @return self
+     */
+    public Call registerOutParameter(int position, int sqlType, String typeName) {
+        return registerOutParameter(position, sqlType, typeName, null);
     }
 
     /**
@@ -67,7 +78,19 @@ public class Call extends SqlStatement<Call> {
      * @return self
      */
     public Call registerOutParameter(int position, int sqlType, CallableStatementMapper mapper) {
-        getBinding().addPositional(position, new OutParamArgument(sqlType, mapper, null));
+        return registerOutParameter(position, sqlType, null, mapper);
+    }
+
+    /**
+     * Register a positional output parameter.
+     * @param position the parameter position (zero-based)
+     * @param sqlType an SQL type constant as defined by {@link java.sql.Types} or by the JDBC vendor.
+     * @param typeName the fully-qualified name of an SQL structured type.
+     * @param mapper a mapper which converts the {@link CallableStatement} to a desired output type.
+     * @return self
+     */
+    public Call registerOutParameter(int position, int sqlType, String typeName, CallableStatementMapper mapper) {
+        getBinding().addPositional(position, new OutParamArgument(sqlType, typeName, mapper, null));
         return this;
     }
 
@@ -78,7 +101,18 @@ public class Call extends SqlStatement<Call> {
      * @return self
      */
     public Call registerOutParameter(String name, int sqlType) {
-        return registerOutParameter(name, sqlType, null);
+        return registerOutParameter(name, sqlType, null, null);
+    }
+
+    /**
+     * Register a named output parameter.
+     * @param name the parameter name
+     * @param sqlType an SQL type constant as defined by {@link java.sql.Types} or by the JDBC vendor.
+     * @param typeName the fully-qualified name of an SQL structured type.
+     * @return self
+     */
+    public Call registerOutParameter(String name, int sqlType, String typeName) {
+        return registerOutParameter(name, sqlType, typeName, null);
     }
 
     /**
@@ -89,7 +123,19 @@ public class Call extends SqlStatement<Call> {
      * @return self
      */
     public Call registerOutParameter(String name, int sqlType, CallableStatementMapper mapper) {
-        getBinding().addNamed(name, new OutParamArgument(sqlType, mapper, name));
+        return registerOutParameter(name, sqlType, null, mapper);
+    }
+
+    /**
+     * Register a named output parameter.
+     * @param name the parameter name
+     * @param sqlType an SQL type constant as defined by {@link java.sql.Types} or by the JDBC vendor.
+     * @param typeName the fully-qualified name of an SQL structured type.
+     * @param mapper a mapper which converts the {@link CallableStatement} to a desired output type.
+     * @return self
+     */
+    public Call registerOutParameter(String name, int sqlType, String typeName, CallableStatementMapper mapper) {
+        getBinding().addNamed(name, new OutParamArgument(sqlType, typeName, mapper, name));
         return this;
     }
 
@@ -147,12 +193,14 @@ public class Call extends SqlStatement<Call> {
     // TODO tostring?
     private class OutParamArgument implements Argument {
         private final int sqlType;
+        private final String typeName;
         private final CallableStatementMapper mapper;
         private final String name;
         private int position;
 
-        OutParamArgument(int sqlType, CallableStatementMapper mapper, String name) {
+        OutParamArgument(int sqlType, String typeName, CallableStatementMapper mapper, String name) {
             this.sqlType = sqlType;
+            this.typeName = typeName;
             this.mapper = mapper;
             this.name = name;
             params.add(this);
@@ -160,7 +208,11 @@ public class Call extends SqlStatement<Call> {
 
         @Override
         public void apply(int outPosition, PreparedStatement statement, StatementContext ctx) throws SQLException {
-            ((CallableStatement) statement).registerOutParameter(outPosition, sqlType);
+            if (typeName != null && !typeName.isEmpty()) {
+                ((CallableStatement) statement).registerOutParameter(outPosition, sqlType, typeName);
+            } else {
+                ((CallableStatement) statement).registerOutParameter(outPosition, sqlType);
+            }
             this.position = outPosition;
         }
 
